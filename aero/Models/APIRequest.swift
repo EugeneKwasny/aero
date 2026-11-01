@@ -25,11 +25,14 @@ final class APIRequest {
     var bodyContent: String
     /// Fields used when bodyType is .formURLEncoded.
     var formFields: [KeyValueItem]
+    /// Parts used when bodyType is .multipart.
+    var multipartParts: [MultipartPart] = []
 
     var authType: AuthType
     var authToken: String
     var authUsername: String
     var authPassword: String
+    var oauth2: OAuth2Config = OAuth2Config()
 
     var createdAt: Date
 
@@ -46,10 +49,12 @@ final class APIRequest {
         bodyType: BodyType = .none,
         bodyContent: String = "",
         formFields: [KeyValueItem] = [],
+        multipartParts: [MultipartPart] = [],
         authType: AuthType = .none,
         authToken: String = "",
         authUsername: String = "",
         authPassword: String = "",
+        oauth2: OAuth2Config = OAuth2Config(),
         createdAt: Date = .now
     ) {
         self.id = id
@@ -61,10 +66,12 @@ final class APIRequest {
         self.bodyType = bodyType
         self.bodyContent = bodyContent
         self.formFields = formFields
+        self.multipartParts = multipartParts
         self.authType = authType
         self.authToken = authToken
         self.authUsername = authUsername
         self.authPassword = authPassword
+        self.oauth2 = oauth2
         self.createdAt = createdAt
     }
 }

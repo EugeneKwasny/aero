@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var workspace = WorkspaceModel()
     @State private var fallbackStore = ResponseStore()
     @State private var showEnvironmentManager = false
+    @State private var showHistory = false
     @AppStorage("activeEnvironmentID") private var activeEnvironmentID: String = ""
 
     /// Lookup of every request by id across all collections.
@@ -86,9 +87,19 @@ struct ContentView: View {
             ToolbarItem {
                 environmentMenu
             }
+            ToolbarItem {
+                Button {
+                    showHistory = true
+                } label: {
+                    Label("History", systemImage: "clock.arrow.circlepath")
+                }
+            }
         }
         .sheet(isPresented: $showEnvironmentManager, onDismiss: syncActiveVariables) {
             EnvironmentManagerView()
+        }
+        .sheet(isPresented: $showHistory) {
+            HistoryView()
         }
         .onChange(of: activeEnvironmentID) { _, _ in syncActiveVariables() }
         .onChange(of: Set(allRequests.keys)) { _, newValue in
@@ -122,5 +133,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: [RequestCollection.self, APIRequest.self, APIEnvironment.self], inMemory: true)
+        .modelContainer(for: [RequestCollection.self, APIRequest.self, APIEnvironment.self, RequestHistoryEntry.self], inMemory: true)
 }

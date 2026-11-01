@@ -6,10 +6,12 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct RequestEditorView: View {
     @Bindable var request: APIRequest
     @Environment(ResponseStore.self) private var store
+    @Environment(\.modelContext) private var modelContext
 
     @State private var selectedTab: EditorTab = .params
 
@@ -121,6 +123,14 @@ struct RequestEditorView: View {
 
     private func send() {
         guard canSend else { return }
-        Task { await store.run(request) }
+        Task {
+            await store.run(request)
+            let entry = RequestHistoryEntry(
+                request: request,
+                response: store.response,
+                errorText: store.errorMessage
+            )
+            modelContext.insert(entry)
+        }
     }
 }

@@ -32,9 +32,22 @@ enum CurlExporter {
             break
         case .basic:
             parts.append("-u \(quote("\(request.authUsername):\(request.authPassword)"))")
+        case .oauth2 where !request.oauth2.accessToken.isEmpty:
+            parts.append("-H \(quote("Authorization: Bearer \(request.oauth2.accessToken)"))")
+        case .oauth2:
+            break
         }
 
-        if let body = bodyString(request) {
+        if request.bodyType == .multipart {
+            for part in request.multipartParts where part.isEnabled && !part.name.isEmpty {
+                if part.isFile {
+                    let file = part.fileName.isEmpty ? "/path/to/file" : part.fileName
+                    parts.append("-F \(quote("\(part.name)=@\(file)"))")
+                } else {
+                    parts.append("-F \(quote("\(part.name)=\(part.value)"))")
+                }
+            }
+        } else if let body = bodyString(request) {
             parts.append("--data \(quote(body))")
         }
 
@@ -60,6 +73,8 @@ enum CurlExporter {
             let fields = request.formFields.filter { $0.isEnabled && !$0.key.isEmpty }
             guard !fields.isEmpty else { return nil }
             return fields.map { "\($0.key)=\($0.value)" }.joined(separator: "&")
+        case .multipart:
+            return nil // handled via -F flags in export(_:)
         }
     }
 

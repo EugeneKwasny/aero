@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import AppKit
+import UniformTypeIdentifiers
 
 struct CollectionSidebarView: View {
     @Environment(\.modelContext) private var modelContext
@@ -50,8 +51,11 @@ struct CollectionSidebarView: View {
         }
         .toolbar {
             ToolbarItem {
-                Button(action: addCollection) {
-                    Label("New Collection", systemImage: "folder.badge.plus")
+                Menu {
+                    Button("New Collection", action: addCollection)
+                    Button("Import Postman Collection…", action: importPostman)
+                } label: {
+                    Label("Add", systemImage: "plus")
                 }
             }
         }
@@ -96,6 +100,7 @@ struct CollectionSidebarView: View {
             Menu {
                 Button("Add Request") { addRequest(to: collection) }
                 Button("Import from cURL…") { importTargetCollection = collection }
+                Button("Export as Postman…") { exportPostman(collection) }
                 Button("Rename") { beginRename(collection) }
                 Divider()
                 Button("Delete Collection", role: .destructive) { delete(collection) }
@@ -129,6 +134,42 @@ struct CollectionSidebarView: View {
     private func copyAsCurl(_ request: APIRequest) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(CurlExporter.export(request), forType: .string)
+    }
+
+    // MARK: - Postman import/export
+
+    private func importPostman() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.json]
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+
+        guard
+            let data = try? Data(contentsOf: url),
+            let result = PostmanImporter.importCollection(from: data)
+        else { return }
+
+        modelContext.insert(result.collection)
+        for request in result.requests {
+            request.collection = result.collection
+            modelContext.insert(request)
+        }
+    }
+
+    private func exportPostman(_ collection: RequestCollection) {
+        guard let data = PostmanExporter.export(collection) else { return }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "\(collection.name).postman_collection.json"
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        try? data.write(to: url)
     }
 
     private func delete(_ collection: RequestCollection) {

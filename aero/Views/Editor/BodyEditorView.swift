@@ -40,6 +40,8 @@ struct BodyEditorView: View {
             textEditor
         case .formURLEncoded:
             KeyValueEditor(items: $request.formFields, keyPlaceholder: "Field", valuePlaceholder: "Value")
+        case .multipart:
+            MultipartEditor(parts: $request.multipartParts)
         }
     }
 

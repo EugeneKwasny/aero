@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import UniformTypeIdentifiers
 
 enum RequestBuilder {
 
@@ -84,6 +85,10 @@ enum RequestBuilder {
             let pair = "\(resolve(request.authUsername)):\(resolve(request.authPassword))"
             guard let data = pair.data(using: .utf8) else { return }
             urlRequest.setValue("Basic \(data.base64EncodedString())", forHTTPHeaderField: "Authorization")
+        case .oauth2:
+            let token = resolve(request.oauth2.accessToken).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !token.isEmpty else { return }
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
     }
 
@@ -102,7 +107,59 @@ enum RequestBuilder {
         case .formURLEncoded:
             urlRequest.httpBody = encodeForm(request.formFields, resolve: resolve).data(using: .utf8)
             setIfAbsent("application/x-www-form-urlencoded", header: "Content-Type", on: &urlRequest)
+        case .multipart:
+            let boundary = "AeroBoundary-\(UUID().uuidString)"
+            urlRequest.httpBody = encodeMultipart(request.multipartParts, boundary: boundary, resolve: resolve)
+            setIfAbsent("multipart/form-data; boundary=\(boundary)", header: "Content-Type", on: &urlRequest)
         }
+    }
+
+    // MARK: - Multipart
+
+    private static func encodeMultipart(_ parts: [MultipartPart], boundary: String, resolve: Resolver) -> Data {
+        var data = Data()
+        let crlf = "\r\n"
+        func append(_ string: String) {
+            if let d = string.data(using: .utf8) { data.append(d) }
+        }
+
+        for part in parts where part.isEnabled && !part.name.isEmpty {
+            let name = resolve(part.name)
+            append("--\(boundary)\(crlf)")
+            if part.isFile {
+                guard let file = readFile(part) else { continue }
+                append("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(file.name)\"\(crlf)")
+                append("Content-Type: \(file.mime)\(crlf)\(crlf)")
+                data.append(file.data)
+                append(crlf)
+            } else {
+                append("Content-Disposition: form-data; name=\"\(name)\"\(crlf)\(crlf)")
+                append(resolve(part.value))
+                append(crlf)
+            }
+        }
+        append("--\(boundary)--\(crlf)")
+        return data
+    }
+
+    /// Resolves a part's security-scoped bookmark and reads the file.
+    private static func readFile(_ part: MultipartPart) -> (data: Data, name: String, mime: String)? {
+        guard let bookmark = part.bookmark else { return nil }
+        var stale = false
+        guard let url = try? URL(
+            resolvingBookmarkData: bookmark,
+            options: [.withSecurityScope],
+            relativeTo: nil,
+            bookmarkDataIsStale: &stale
+        ) else { return nil }
+
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+
+        guard let fileData = try? Data(contentsOf: url) else { return nil }
+        let name = part.fileName.isEmpty ? url.lastPathComponent : part.fileName
+        let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+        return (fileData, name, mime)
     }
 
     /// Percent-encodes enabled form fields into an `a=b&c=d` string.

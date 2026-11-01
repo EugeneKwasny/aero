@@ -46,6 +46,7 @@ enum BodyType: String, Codable, CaseIterable, Identifiable {
     case json
     case raw
     case formURLEncoded
+    case multipart
 
     var id: String { rawValue }
 
@@ -55,6 +56,7 @@ enum BodyType: String, Codable, CaseIterable, Identifiable {
         case .json: return "JSON"
         case .raw: return "Raw"
         case .formURLEncoded: return "Form URL-Encoded"
+        case .multipart: return "Multipart"
         }
     }
 }
@@ -64,6 +66,7 @@ enum AuthType: String, Codable, CaseIterable, Identifiable {
     case none
     case bearer
     case basic
+    case oauth2
 
     var id: String { rawValue }
 
@@ -72,6 +75,22 @@ enum AuthType: String, Codable, CaseIterable, Identifiable {
         case .none: return "No Auth"
         case .bearer: return "Bearer Token"
         case .basic: return "Basic Auth"
+        case .oauth2: return "OAuth 2.0"
+        }
+    }
+}
+
+/// Supported OAuth 2.0 grant types.
+enum OAuth2GrantType: String, Codable, CaseIterable, Identifiable {
+    case clientCredentials
+    case authorizationCode
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .clientCredentials: return "Client Credentials"
+        case .authorizationCode: return "Authorization Code"
         }
     }
 }
