@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import AppKit
 
 struct CollectionSidebarView: View {
     @Environment(\.modelContext) private var modelContext
@@ -18,6 +19,9 @@ struct CollectionSidebarView: View {
     @State private var renamingCollection: RequestCollection?
     @State private var renamingRequest: APIRequest?
     @State private var nameField: String = ""
+
+    // cURL import target
+    @State private var importTargetCollection: RequestCollection?
 
     var body: some View {
         List(selection: $selectedRequestID) {
@@ -61,6 +65,13 @@ struct CollectionSidebarView: View {
             Button("Cancel", role: .cancel) {}
             Button("Save") { commitRequestRename() }
         }
+        .sheet(item: $importTargetCollection) { collection in
+            CurlImportView { request in
+                request.collection = collection
+                modelContext.insert(request)
+                selectedRequestID = request.id
+            }
+        }
     }
 
     // MARK: - Rows
@@ -73,6 +84,7 @@ struct CollectionSidebarView: View {
         }
         .contextMenu {
             Button("Rename") { beginRename(request) }
+            Button("Copy as cURL") { copyAsCurl(request) }
             Button("Delete", role: .destructive) { delete(request) }
         }
     }
@@ -83,6 +95,7 @@ struct CollectionSidebarView: View {
             Spacer()
             Menu {
                 Button("Add Request") { addRequest(to: collection) }
+                Button("Import from cURL…") { importTargetCollection = collection }
                 Button("Rename") { beginRename(collection) }
                 Divider()
                 Button("Delete Collection", role: .destructive) { delete(collection) }
@@ -111,6 +124,11 @@ struct CollectionSidebarView: View {
     private func delete(_ request: APIRequest) {
         if selectedRequestID == request.id { selectedRequestID = nil }
         modelContext.delete(request)
+    }
+
+    private func copyAsCurl(_ request: APIRequest) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(CurlExporter.export(request), forType: .string)
     }
 
     private func delete(_ collection: RequestCollection) {

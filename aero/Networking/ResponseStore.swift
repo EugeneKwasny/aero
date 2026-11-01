@@ -15,6 +15,9 @@ final class ResponseStore {
     var response: APIResponse?
     var errorMessage: String?
 
+    /// Variables from the active environment, applied on the next send.
+    var activeVariables: [String: String] = [:]
+
     private let client: HTTPClient
 
     init(client: HTTPClient = HTTPClient()) {
@@ -28,7 +31,7 @@ final class ResponseStore {
         defer { isLoading = false }
 
         do {
-            response = try await client.send(request)
+            response = try await client.send(request, variables: activeVariables)
         } catch {
             response = nil
             errorMessage = error.localizedDescription

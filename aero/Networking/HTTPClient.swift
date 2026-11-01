@@ -15,9 +15,12 @@ struct HTTPClient {
     }
 
     /// Sends the request and returns a structured response.
+    /// - Parameter variables: environment variables substituted into the request.
     /// - Throws: `HTTPClientError` on invalid input or transport failure.
-    func send(_ request: APIRequest) async throws -> APIResponse {
-        let urlRequest = try RequestBuilder.makeURLRequest(from: request)
+    func send(_ request: APIRequest, variables: [String: String] = [:]) async throws -> APIResponse {
+        let urlRequest = try RequestBuilder.makeURLRequest(from: request) {
+            VariableResolver.resolve($0, with: variables)
+        }
 
         let start = Date()
         let data: Data

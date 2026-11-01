@@ -14,6 +14,7 @@ struct aeroApp: App {
         let schema = Schema([
             RequestCollection.self,
             APIRequest.self,
+            APIEnvironment.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
