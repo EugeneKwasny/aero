@@ -93,6 +93,7 @@ struct ContentView: View {
                 } label: {
                     Label("History", systemImage: "clock.arrow.circlepath")
                 }
+                .keyboardShortcut("y", modifiers: .command)
             }
         }
         .sheet(isPresented: $showEnvironmentManager, onDismiss: syncActiveVariables) {

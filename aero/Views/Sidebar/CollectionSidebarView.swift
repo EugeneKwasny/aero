@@ -24,6 +24,9 @@ struct CollectionSidebarView: View {
     // cURL import target
     @State private var importTargetCollection: RequestCollection?
 
+    // Postman import error feedback
+    @State private var showImportError = false
+
     var body: some View {
         List(selection: $selectedRequestID) {
             ForEach(collections) { collection in
@@ -75,6 +78,11 @@ struct CollectionSidebarView: View {
                 modelContext.insert(request)
                 selectedRequestID = request.id
             }
+        }
+        .alert("Import Failed", isPresented: $showImportError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("The selected file is not a valid Postman Collection (v2.1).")
         }
     }
 
@@ -152,7 +160,10 @@ struct CollectionSidebarView: View {
         guard
             let data = try? Data(contentsOf: url),
             let result = PostmanImporter.importCollection(from: data)
-        else { return }
+        else {
+            showImportError = true
+            return
+        }
 
         modelContext.insert(result.collection)
         for request in result.requests {

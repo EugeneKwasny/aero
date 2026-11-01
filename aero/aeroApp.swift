@@ -7,52 +7,53 @@
 
 import SwiftUI
 import SwiftData
+import AppKit
 
 @main
 struct aeroApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema(versionedSchema: CurrentSchema.self)
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(
-                for: schema,
-                migrationPlan: AeroMigrationPlan.self,
-                configurations: [modelConfiguration]
-            )
-        } catch {
-            // Last-resort safety net: if the store still fails to load (e.g. a
-            // schema change without a migration stage during development),
-            // reset it and try once more rather than crashing on launch.
-            removeStore(at: modelConfiguration.url)
-            do {
-                return try ModelContainer(
-                    for: schema,
-                    migrationPlan: AeroMigrationPlan.self,
-                    configurations: [modelConfiguration]
-                )
-            } catch {
-                fatalError("Could not create ModelContainer: \(error)")
-            }
-        }
-    }()
-
-    /// Removes the SQLite store and its sidecar files.
-    private static func removeStore(at url: URL) {
-        let fileManager = FileManager.default
-        for suffix in ["", "-wal", "-shm"] {
-            let path = url.deletingPathExtension().appendingPathExtension("store\(suffix)")
-            try? fileManager.removeItem(at: path)
-            // Also try the raw url + suffix in case the extension differs.
-            let raw = URL(fileURLWithPath: url.path + suffix)
-            try? fileManager.removeItem(at: raw)
-        }
-    }
+    private let persistence = PersistenceController.make()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView(loadFailed: persistence.loadFailed)
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(persistence.container)
+        .commands {
+            CommandGroup(after: .newItem) {
+                Button("New Collection") {
+                    persistence.container.mainContext.insert(RequestCollection())
+                }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+            }
+        }
+    }
+}
+
+/// Hosts the main UI and surfaces a data-load failure as a non-destructive
+/// alert rather than crashing or wiping the store.
+private struct RootView: View {
+    let loadFailed: Bool
+    @State private var showLoadAlert: Bool
+
+    init(loadFailed: Bool) {
+        self.loadFailed = loadFailed
+        _showLoadAlert = State(initialValue: loadFailed)
+    }
+
+    var body: some View {
+        ContentView()
+            .alert("Couldn’t Open Saved Data", isPresented: $showLoadAlert) {
+                Button("Continue Without Saving", role: .cancel) {}
+                Button("Reset & Quit", role: .destructive) {
+                    PersistenceController.backupStore()
+                    NSApplication.shared.terminate(nil)
+                }
+            } message: {
+                Text("""
+                Aero is running with temporary storage, so your existing data is left untouched. \
+                Choose “Reset & Quit” to move the old data aside (a backup is kept) and start \
+                fresh on the next launch.
+                """)
+            }
     }
 }
