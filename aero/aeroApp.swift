@@ -12,7 +12,8 @@ import SwiftData
 struct aeroApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            RequestCollection.self,
+            APIRequest.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

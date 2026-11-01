@@ -2,58 +2,58 @@
 //  ContentView.swift
 //  aero
 //
-//  Created by Eugene Kwasny on 31.10.2026.
+//  Root three-column layout: collections sidebar, request editor,
+//  and response viewer.
 //
 
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @Query(sort: \RequestCollection.createdAt) private var collections: [RequestCollection]
+    @State private var selectedRequestID: UUID?
+    @State private var responseStore = ResponseStore()
+
+    /// The request currently selected in the sidebar, if any.
+    private var selectedRequest: APIRequest? {
+        for collection in collections {
+            if let match = collection.requests.first(where: { $0.id == selectedRequestID }) {
+                return match
+            }
+        }
+        return nil
+    }
 
     var body: some View {
         NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
+            CollectionSidebarView(
+                collections: collections,
+                selectedRequestID: $selectedRequestID
+            )
+        } content: {
+            if let request = selectedRequest {
+                RequestEditorView(request: request)
+                    .navigationSplitViewColumnWidth(min: 360, ideal: 460)
+            } else {
+                ContentUnavailableView {
+                    Label("No Request Selected", systemImage: "paperplane")
+                } description: {
+                    Text("Select a request, or create one in a collection.")
                 }
-                .onDelete(perform: deleteItems)
-            }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-            .toolbar {
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
+                .navigationSplitViewColumnWidth(min: 360, ideal: 460)
             }
         } detail: {
-            Text("Select an item")
+            ResponseView()
         }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
+        .navigationTitle("Aero")
+        .environment(responseStore)
+        .onChange(of: selectedRequestID) { _, _ in
+            responseStore.reset()
         }
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: [RequestCollection.self, APIRequest.self], inMemory: true)
 }
