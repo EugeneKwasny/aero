@@ -27,6 +27,12 @@ testing backend APIs.
 - **cURL** import (paste a command) and export (copy as cURL)
 - **Postman Collection v2.1** import and export
 
+## Support
+
+- **Bug or feature request:** [open an issue](https://github.com/aerohq/aero/issues/new)
+- **Email:** [aerohq.dev@gmail.com](mailto:aerohq.dev@gmail.com)
+- **Privacy Policy:** [aerohq.github.io/aero/privacy.html](https://aerohq.github.io/aero/privacy.html)
+
 ## Requirements
 
 - macOS 26 (Tahoe) or later
@@ -35,7 +41,7 @@ testing backend APIs.
 ## Building
 
 ```sh
-git clone git@github.com:EugeneKwasny/aero.git
+git clone git@github.com:aerohq/aero.git
 cd aero
 open aero.xcodeproj
 ```
